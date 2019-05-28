@@ -1,0 +1,209 @@
+Configuring the OpenShift Internal Registry for Persistence
+############################################################
+
+1. Get the Project List and set default project 'default' 
+
+[root@master ~]# oc get projects 
+[root@master ~]# oc project default
+
+2. Get the list of Pods 
+
+[root@master ~]# oc get pods
+
+NAME                       READY     STATUS    RESTARTS   AGE
+docker-registry-1-6gr55    1/1       Running   1          4d
+registry-console-1-jllcb   1/1       Running   1          4d
+router-1-kgkcg             1/1       Running   1          4d
+
+
+3. verify the registry Pod have persistent volume or not 
+
+[root@master ~]# oc describe pod docker-registry-1-6gr55 | grep -A 2 'Volumes'
+
+Volumes:
+  registry-storage:
+    Type:    EmptyDir (a temporary directory that shares a pod's lifetime)
+
+	
+[root@master ~]# oc set volume pod docker-registry-1-6gr55
+
+pods/docker-registry-1-6gr55
+  empty directory as registry-storage		## see here, it's an empty directory as registry storage ##
+    mounted at /registry
+  secret/registry-certificates as registry-certificates
+    mounted at /etc/secrets
+  secret/registry-token-8hjkp as registry-token-8hjkp
+    mounted at /var/run/secrets/kubernetes.io/serviceaccount
+
+4. Configure NFS Server to share persistent Storage for registry Pod 
+
+[root@nfs ~]# yum install nfs-utils -y
+
+[root@nfs ~]# mkdir -p /shares/registry
+[root@nfs ~]# chmod o+rwx /shares/registry/
+
+   
+[root@nfs ~]# echo "/shares/registry   192.168.0.0/24(rw,sync)" >> /etc/exports
+   
+[root@nfs ~]# cat /etc/exports
+/shares/registry   192.168.0.0/24(rw,sync)
+   
+[root@nfs ~]# systemctl start nfs-server
+[root@nfs ~]# systemctl enable nfs-server
+
+[root@nfs ~]# showmount -e
+   
+Export list for nfs.openshift.example.com:
+/shares/registry 192.168.0.0/24
+	
+5. Now go to OpenShift Master node and Get NFS Share and Deployment Config details 
+
+[root@master ~]# showmount -e nfs.openshift.example.com
+
+Export list for nfs.openshift.example.com:
+/shares/registry 192.168.0.0/24
+
+
+[root@master ~]# oc get dc
+
+NAME               REVISION   DESIRED   CURRENT   TRIGGERED BY
+docker-registry    1          1         1         config
+registry-console   1          1         1         config
+router             1          1         1         config
+
+
+6. Create a YAML file to configure persistent volume 
+
+[root@master ~]# vim registry-volume.yaml
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: registry-volume
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteMany
+  nfs:
+    path: /shares/registry
+    server: nfs.openshift.example.com
+  persistentVolumeReclaimPolicy: Recycle
+  claimRef:
+    name: registry-pvclaim
+    namespace: default
+
+:wq (save and exit) 
+
+[root@master ~]# oc create -f registry-volume.yaml
+persistentvolume "registry-volume" created
+
+[root@master ~]# oc get pv
+NAME              CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                      STORAGECLASS   REASON    AGE
+registry-volume   5Gi        RWX            Recycle          Available   default/registry-pvclaim                            10s
+
+
+7. Claim the persistent volume for registry Pod
+
+
+[root@master ~]# oc get pods
+NAME                       READY     STATUS    RESTARTS   AGE
+docker-registry-1-2rlzj    1/1       Running   0          28m
+registry-console-1-nlrf8   1/1       Running   0          28m
+router-1-f8m7j             1/1       Running   0          28m
+
+[root@master ~]# oc get dc
+NAME               REVISION   DESIRED   CURRENT   TRIGGERED BY
+docker-registry    1          1         1         config
+registry-console   1          1         1         config
+router             1          1         1         config
+
+
+[root@master ~]# oc set volume dc/docker-registry -n default --add --overwrite --name=registry-storage -t pvc --claim-name=registry-pvclaim --claim-size=5Gi --claim-mode='ReadWritemany'
+
+persistentvolumeclaims/registry-pvclaim
+deploymentconfig "docker-registry" updated
+
+
+[root@master ~]# oc get pvc
+NAME               STATUS    VOLUME            CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+registry-pvclaim   Bound     registry-volume   5Gi        RWX                           29s
+
+[root@master ~]# oc get pv
+NAME              CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS    CLAIM                      STORAGECLASS   REASON    AGE
+registry-volume   5Gi        RWX            Recycle          Bound     default/registry-pvclaim                            2m
+
+[root@master ~]# oc get pods
+NAME                       READY     STATUS    RESTARTS   AGE
+docker-registry-2-cw6s9    1/1       Running   0          1m			# Compare docker-registry Pod ID with previous pod list 
+registry-console-1-nlrf8   1/1       Running   0          31m
+router-1-f8m7j             1/1       Running   0          31m
+
+
+[root@master ~]# oc describe pod docker-registry-2-cw6s9
+
+
+[root@master ~]# oc set volume pod docker-registry-2-cw6s9
+
+pods/docker-registry-2-cw6s9
+  secret/registry-certificates as registry-certificates
+    mounted at /etc/secrets
+  pvc/registry-pvclaim (allocated 5GiB) as registry-storage
+    mounted at /registry
+  secret/registry-token-8hjkp as registry-token-8hjkp
+    mounted at /var/run/secrets/kubernetes.io/serviceaccount
+
+	
+8. Verify that the registry is using the NFS share to save container images.
+
+Create a new project named registry-storage:
+
+[root@nfs ~]# ls -l /shares/registry/
+
+Now Open Web Browser and point to the following URL to access OpenShift Dashboard: 
+
+Login to OpenShift Dashboard : https://master.openshift.example.com:8443/
+
+Username : admin
+Password : Pas$$w0rd
+
+Click on "+ Create Project" 
+
+Name: registry-storage-project
+
+Display Name registry storage project
+
+Description: registry storage project
+
+
+Now Select registry storage project -> Brows Catalog -> PHP -> Next -> 
+
+Version: 7.0 - latest
+Application Name: rgtest
+Git Repositories: https://github.com/sureshchandrarhca15/OpenShift39.git
+
+Create -> Close. 
+
+Now click on Overview and expend rgtest App for more details. 
+
+You have to wait till build successfully completed. Once completed, you will have a running pod from it. 
+
+Now go back to CLI Console on master node, and do the following to verify the pod. 
+
+[root@master ~]# oc get pods -n registry-storage-project -o wide
+NAME              READY     STATUS      RESTARTS   AGE       IP            NODE
+regtest-1-442wk   1/1       Running     0          2m        10.131.0.25   node2.openshift.example.com
+regtest-1-build   0/1       Completed   0          4m        10.131.0.24   node2.openshift.example.com
+
+Now go back to NFS Server and check the share for registry Images 
+
+[root@localhost ~]# ls -l /shares/registry/
+total 0
+drwxr-xr-x 3 1000000000 nfsnobody 22 Oct 21 14:14 docker
+
+[root@localhost ~]# ls -l /shares/registry/docker/registry/v2/repositories/
+total 0
+drwxr-xr-x 3 1000000000 nfsnobody 21 Oct 21 14:14 registry-storage-project
+
+
+You have successfuly configured Openshift Docker Registry with Persistent Storage using NFS Share. 

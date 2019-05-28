@@ -1,0 +1,140 @@
+Step 17: Now if you don't want to use /etc/hosts file for name resolution, you can use below steps to configure DNS for it. 
+
+
+
+							#################################
+							# Installing & Configuring DNS 	#
+							#################################
+
+I am using my Laptop to Install and Configure Bind DNS to resolve hostnames and Cloud Applications names which you will deploy in Openshift Platform. 
+
+Step 1: Install Bind Packages: 
+******************************
+
+~]# yum install bind* -y
+
+
+Step 2: Configure Bind: 
+***********************
+
+
+~]# vim /etc/named.conf
+
+	#do the following changes:
+
+	listen-on port 53 { 127.0.0.1; 192.168.0.103; };	# 192.168.0.103 is the IP Address of my system 
+
+	allow-query     { localhost; 192.168.0.0/24; };		# 192.168.0.0/24 is the subnet range which I am allowing to query
+
+
+:wq (save and exit) 
+
+
+~]# vim /etc/named.rfc1912.zones
+
+	#Do the following changes
+
+	zone "openshift.example.com" IN {
+        type master;
+        file "openshift.example.com.zone";
+        allow-update { none; };
+	};
+
+	zone "0.168.192.in-addr.arpa" IN {
+        type master;
+        file "0.168.192.zone";
+        allow-update { none; };
+	};
+
+:wq (save and exit) 
+
+
+Step 3: Configure Lookup zone files
+
+~]# cd /var/named/
+
+
+~]# vim openshift.example.com.zone
+
+$TTL 1D
+@       IN SOA  openshift.example.com. root.openshift.example.com. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+openshift.example.com.  IN      NS     ThinkPad-E450.openshift.example.com.
+@                       IN      A       192.168.0.103
+ThinkPad-E450           IN      A       192.168.0.103
+master                  IN      A       192.168.0.111
+infra                   IN      A       192.168.0.112
+node1                   IN      A       192.168.0.113
+node2                   IN      A       192.168.0.114
+*.apps.openshift.example.com.   IN      CNAME   infra.openshift.example.com.
+
+
+:wq (save and exit) 
+
+
+
+
+~]# vim 0.168.192.zone
+
+$TTL 1D
+@       IN SOA  openshift.example.com. root.openshift.example.com. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+                        IN      NS      ThinkPad-E450.openshift.example.com.
+111                     IN      PTR     master.openshift.example.com.
+112                     IN      PTR     infra.openshift.example.com.
+113                     IN      PTR     node1.openshift.example.com.
+114                     IN      PTR     node2.openshift.example.com.
+
+
+:wq (save and exit) 
+
+
+Step 4: Change group ownership for both zone files as below and start the named service: 
+*****************************************************************************************
+
+~]# chown  root:named  openshift.example.com.zone 0.168.192.zone
+
+~]# service named restart
+~]# service named status
+
+
+
+Step 5: verify Bind DNS Service for Name Resolve from Infrastructure Nodes:
+****************************************************************************
+
+~]# ping -c 3 master.openshift.example.com
+~]# ping -c 3 infra.openshift.example.com
+~]# ping -c 3 node1.openshift.example.com
+~]# ping -c 3 node2.openshift.example.com
+
+
+~]# nslookup master.openshift.example.com
+~]# nslookup infra.openshift.example.com
+~]# nslookup node1.openshift.example.com
+~]# nslookup node2.openshift.example.com
+
+
+############################################################################################
+
+
+To create an application based on an image from Docker Hub:
+$ oc new-app mysql MYSQL_USER=user MYSQL_PASSWORD=pass MYSQL_DATABASE=testdb -l db=mysql
+
+To create an application based on an image from a private registry:
+$ oc new-app --docker-image=myregistry.com/mycompany/myapp --name=myapp
+
+To create an application based on source code stored in a Git repository:
+$ oc new-app https://github.com/openshift/ruby-hello-world --name=ruby-hello
+
+To create an application based on source code stored in a Git repository and referring to an image stream:
+$ oc new-app https://mygitrepo/php-hello -i php:7.0 --name=php-hello
+
+############################################################################################
