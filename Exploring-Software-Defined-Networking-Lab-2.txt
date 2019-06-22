@@ -148,7 +148,7 @@ Welcome to OpenShift 3.9 Cluster Training...:)sam@ThinkPad-E450:~$
 ....
 
 
-  type: NodePort
+  type: ClusterIP
 
 .....
 
