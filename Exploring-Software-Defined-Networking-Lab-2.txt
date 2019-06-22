@@ -39,8 +39,8 @@ will take some time to build and deploy the pods.
 [root@master ~]# oc get pods -o wide
 
 NAME            READY     STATUS      RESTARTS   AGE       IP            NODE
-hello-1-build   0/1       Completed   0          3m        10.129.0.9    node2.example.com
-hello-1-d4wjz   1/1       Running     0          1m        10.129.0.10   node2.example.com
+hello-1-build   0/1       Completed   0          3m        10.129.0.9    node2.openshift.example.com
+hello-1-d4wjz   1/1       Running     0          1m        10.129.0.10   node2.openshift.example.com
 
 
 7. Scale the application to two pods:
@@ -50,9 +50,9 @@ hello-1-d4wjz   1/1       Running     0          1m        10.129.0.10   node2.e
 
 [root@master ~]# oc get pods -o wide 
 NAME            READY     STATUS      RESTARTS   AGE       IP            NODE
-hello-1-build   0/1       Completed   0          13m       10.129.0.9    node2.example.com
-hello-1-d4wjz   1/1       Running     0          11m       10.129.0.10   node2.example.com
-hello-1-vfxks   1/1       Running     0          1m        10.131.0.20   node1.example.com
+hello-1-build   0/1       Completed   0          13m       10.129.0.9    node2.openshift.example.com
+hello-1-d4wjz   1/1       Running     0          11m       10.129.0.10   node2.openshift.example.com
+hello-1-vfxks   1/1       Running     0          1m        10.131.0.20   node1.openshift.example.com
 
 [root@master ~]# oc get dc 
 NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
@@ -132,11 +132,11 @@ Events:                   <none>
 
 13. Access the application using the NodePort IP address from the other node which is not the part of openshift cluster: 
 
-sam@ThinkPad-E450:~$ curl http://node1.example.com:31403
+sam@ThinkPad-E450:~$ curl http://node1.openshift.example.com:31403
 Welcome to OpenShift 3.9 Cluster Training...:)sam@ThinkPad-E450:~$ 
 
 
-sam@ThinkPad-E450:~$ curl http://node2.example.com:31403
+sam@ThinkPad-E450:~$ curl http://node2.openshift.example.com:31403
 Welcome to OpenShift 3.9 Cluster Training...:)sam@ThinkPad-E450:~$ 
 
 
@@ -176,21 +176,21 @@ Events:            <none>
 
 15. Create route for hello service 
 
-[root@master ~]# oc expose service hello --hostname=networktestapp.apps.example.com 
+[root@master ~]# oc expose service hello --hostname=hello.apps.openshift.example.com 
 
 [root@master ~]# oc get route 
 NAME      HOST/PORT                         PATH      SERVICES   PORT       TERMINATION   WILDCARD
-hello     networktestapp.apps.example.com             hello      8080-tcp                 None
+hello     hello.apps.openshift.example.com             hello      8080-tcp                 None
 
 16. Open the Browser and point to the below URL: 
 
-http://networktestapp.apps.example.com/
+http://hello.apps.openshift.example.com/
 
 17. Let's create a secure route for hello service 
 
 [root@master ~]# oc get route 
 NAME      HOST/PORT                         PATH      SERVICES   PORT       TERMINATION   WILDCARD
-hello     networktestapp.apps.example.com             hello      8080-tcp                 None
+hello     hello.apps.openshift.example.com             hello      8080-tcp                 None
 
 [root@master ~]# oc delete route hello 
 route "hello" deleted
@@ -204,7 +204,7 @@ No resources found.
 [root@master ~]# openssl genrsa -out hello.key 2048 
 
 
-[root@master ~]# openssl req -new -key hello.key -out hello.csr -subj "/C=IN/ST=Delhi/L=NewDelhi/O=Example/OU=DevOps/CN=networktestapp.apps.example.com"
+[root@master ~]# openssl req -new -key hello.key -out hello.csr -subj "/C=IN/ST=Delhi/L=NewDelhi/O=Example/OU=DevOps/CN=hello.apps.openshift.example.com"
 
 
 [root@master ~]# openssl x509 -req -days 366 -in hello.csr -signkey hello.key -out hello.crt 
@@ -214,19 +214,26 @@ No resources found.
 19. Create a secure edge-terminated route using the generated TLS certificate and key.
 
 
-[root@master ~]# oc create route edge --service=hello --hostname=networktestapp.apps.example.com --key=hello.key --cert=hello.crt 
+[root@master ~]# oc create route edge --service=hello --hostname=hello.apps.openshift.example.com --key=hello.key --cert=hello.crt 
 
 
 [root@master ~]# oc get route 
 NAME      HOST/PORT                         PATH      SERVICES   PORT       TERMINATION   WILDCARD
-hello     networktestapp.apps.example.com             hello      8080-tcp   edge          None
+hello     hello.apps.openshift.example.com             hello      8080-tcp   edge          None
 
 [root@master ~]# oc get route/hello -o yaml
 
 
 20. Now Open Web Browser and point to the following URL: 
 
-https://networktestapp.apps.example.com
+https://hello.apps.openshift.example.com
+
+
+
+
+
+
+
 
 
 
@@ -250,6 +257,8 @@ $ oc new-app https://github.com/sureshchandrarhca15/openshift-39 -i php:7.0 --na
 
 
 #####################################################################################
+
+
 
 
 
@@ -278,10 +287,10 @@ project1                project1       Active
 
 
 
-Login to https://master.example.com:8443
+Login to https://master.openshift.example.com:8443
 
 Username	: admin
-Password	: redhat 
+Password	: Pa$$w0rd
 
 
 Select "project1" Project and Deploy MySQL Pod in it by following the below steps: 
@@ -307,18 +316,17 @@ Now click on Project Overview and check the status. You can also check the statu
 
 [root@master ~]# oc get pods -o wide
 NAME            READY     STATUS    RESTARTS   AGE       IP           NODE
-mysql-1-n2j7k   1/1       Running   0          1m        10.130.0.8   node2.example.com
-[root@master ~]#
+mysql-1-n2j7k   1/1       Running   0          1m        10.130.0.8   node2.openshift.example.com
+
+
 [root@master ~]# oc get dc
 NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
 mysql     1          1         1         config,image(mysql:5.7)
-[root@master ~]#
-[root@master ~]#
+
 [root@master ~]# oc get rc
 NAME      DESIRED   CURRENT   READY     AGE
 mysql-1   1         1         1         2m
-[root@master ~]#
-[root@master ~]#
+
 [root@master ~]# oc get svc
 NAME      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 mysql     ClusterIP   172.30.99.205   <none>        3306/TCP   2m
@@ -341,6 +349,9 @@ mysql> show databases;
 | sys                |
 +--------------------+
 5 rows in set (0.00 sec)
+
+mysql> use sampledb;
+
 
 mysql> create table users (user_id int not null auto_increment, username varchar(200), PRIMARY KEY(user_id));
 Query OK, 0 rows affected (0.02 sec)
@@ -368,10 +379,10 @@ bash-4.2$ exit
 
 Now let's Deploy a frontend Application which connect to MySQL Database. 
 
-Login to https://master.example.com:8443
+Login to https://master.openshift.example.com:8443
 
 Username:	admin
-Password: 	redhat
+Password: 	Pa$$w0rd
 
 
 Select Project1 -> Click on "Add to Project" drop down menu-> select "Browse Catalog -> Select PHP Build Image -> Next 
@@ -414,12 +425,14 @@ mysql     ClusterIP   172.30.99.205    <none>        3306/TCP   16m
 
 
 [root@master ~]# oc get route
-NAME      HOST/PORT                          PATH      SERVICES   PORT       TERMINATION   WILDCARD
-dbtest    dbtest-project1.apps.example.com             dbtest     8080-tcp                 None
+NAME      HOST/PORT                          			PATH      SERVICES   PORT       TERMINATION   WILDCARD
+dbtest    dbtest-project1.apps.openshift.example.com             dbtest     8080-tcp                 None
 
 
 Now Open the Web Browser and Point to the below URL: 
 
-http://dbtest-project1.apps.example.com
+http://dbtest-project1.apps.openshift.example.com
 
-http://dbtest-project1.apps.example.com/dbtest.php
+http://dbtest-project1.apps.openshift.example.com/dbtest.php
+
+#######################################################################################
