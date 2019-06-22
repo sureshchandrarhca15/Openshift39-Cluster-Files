@@ -1,0 +1,425 @@
+Demo: Exploring Software Defined Networking
+###########################################
+
+1. Create the network-test project:
+
+[root@master ~]# oc new-project network-test
+
+2. Deploy the scaling application from the Github Repo.
+
+[root@master ~]# oc new-app --name=hello openshift/php~https://github.com/sureshchandrarhca15/openshift-php-hello-world.git
+
+
+3. Get the build details 
+
+[root@master ~]# oc get bc 
+NAME      TYPE      FROM      LATEST
+hello     Source    Git       1
+
+[root@master ~]# oc logs -f bc/hello
+
+
+4. Get the Deployment Config details
+
+[root@master ~]# oc get dc 
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+hello     1          1         1         config,image(hello:latest)
+
+
+5. Get the Service details
+
+[root@master ~]# oc get svc 
+NAME      TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
+hello     ClusterIP   172.30.67.36   <none>        8080/TCP,8443/TCP   8m
+
+
+6. Run the following command to verify that the application pod is ready and running. It
+will take some time to build and deploy the pods.
+
+[root@master ~]# oc get pods -o wide
+
+NAME            READY     STATUS      RESTARTS   AGE       IP            NODE
+hello-1-build   0/1       Completed   0          3m        10.129.0.9    node2.example.com
+hello-1-d4wjz   1/1       Running     0          1m        10.129.0.10   node2.example.com
+
+
+7. Scale the application to two pods:
+
+[root@master ~]# oc scale --replicas=2 dc hello
+
+
+[root@master ~]# oc get pods -o wide 
+NAME            READY     STATUS      RESTARTS   AGE       IP            NODE
+hello-1-build   0/1       Completed   0          13m       10.129.0.9    node2.example.com
+hello-1-d4wjz   1/1       Running     0          11m       10.129.0.10   node2.example.com
+hello-1-vfxks   1/1       Running     0          1m        10.131.0.20   node1.example.com
+
+[root@master ~]# oc get dc 
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+hello     1          2         2         config,image(hello:latest)
+
+
+
+8. Verify that the application is accessible using the individual pod IP addresses.
+
+[root@master ~]# curl 10.129.0.10:8080
+
+[root@master ~]# curl 10.131.0.20:8080
+
+
+
+9. Verify that the application is not accessible from other node which is not the part of Openshift Cluster, using the IP addresses
+listed in the previous step:
+
+
+10. Verify that the application is accessible using the service IP address (also known as the cluster IP)
+
+
+[root@master ~]# oc get svc 
+NAME      TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
+hello     ClusterIP   172.30.67.36   <none>        8080/TCP,8443/TCP   20m
+
+[root@master ~]# curl 172.30.67.36:8080
+
+
+11. Inspect the service Type 
+
+[root@master ~]# oc describe svc hello
+
+
+[root@master ~]# oc get svc hello -o yaml | tee hello-svc.yml 
+
+
+12. Edit the service configuration for the application and change the service type to NodePort.
+
+[root@master ~]# oc edit svc hello
+
+....
+
+
+  type: NodePort
+
+.....
+
+
+:wq (save and exit) 
+
+
+[root@master ~]# oc describe svc hello
+
+Name:                     hello
+Namespace:                network-test
+Labels:                   app=hello
+Annotations:              openshift.io/generated-by=OpenShiftNewApp
+Selector:                 app=hello,deploymentconfig=hello
+Type:                     NodePort
+IP:                       172.30.67.36
+Port:                     8080-tcp  8080/TCP
+TargetPort:               8080/TCP
+NodePort:                 8080-tcp  31403/TCP
+Endpoints:                10.129.0.10:8080,10.131.0.20:8080
+Port:                     8443-tcp  8443/TCP
+TargetPort:               8443/TCP
+NodePort:                 8443-tcp  30960/TCP
+Endpoints:                10.129.0.10:8443,10.131.0.20:8443
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+
+
+
+
+13. Access the application using the NodePort IP address from the other node which is not the part of openshift cluster: 
+
+sam@ThinkPad-E450:~$ curl http://node1.example.com:31403
+Welcome to OpenShift 3.9 Cluster Training...:)sam@ThinkPad-E450:~$ 
+
+
+sam@ThinkPad-E450:~$ curl http://node2.example.com:31403
+Welcome to OpenShift 3.9 Cluster Training...:)sam@ThinkPad-E450:~$ 
+
+
+14. Edit the service configuration for the application and change the service type to ClusterIP.
+
+[root@master ~]# oc edit svc hello
+
+
+....
+
+
+  type: NodePort
+
+.....
+
+
+:wq (save and exit) 
+
+
+[root@master ~]# oc describe svc hello
+Name:              hello
+Namespace:         network-test
+Labels:            app=hello
+Annotations:       openshift.io/generated-by=OpenShiftNewApp
+Selector:          app=hello,deploymentconfig=hello
+Type:              ClusterIP
+IP:                172.30.67.36
+Port:              8080-tcp  8080/TCP
+TargetPort:        8080/TCP
+Endpoints:         10.129.0.10:8080,10.131.0.20:8080
+Port:              8443-tcp  8443/TCP
+TargetPort:        8443/TCP
+Endpoints:         10.129.0.10:8443,10.131.0.20:8443
+Session Affinity:  None
+Events:            <none>
+
+
+15. Create route for hello service 
+
+[root@master ~]# oc expose service hello --hostname=networktestapp.apps.example.com 
+
+[root@master ~]# oc get route 
+NAME      HOST/PORT                         PATH      SERVICES   PORT       TERMINATION   WILDCARD
+hello     networktestapp.apps.example.com             hello      8080-tcp                 None
+
+16. Open the Browser and point to the below URL: 
+
+http://networktestapp.apps.example.com/
+
+17. Let's create a secure route for hello service 
+
+[root@master ~]# oc get route 
+NAME      HOST/PORT                         PATH      SERVICES   PORT       TERMINATION   WILDCARD
+hello     networktestapp.apps.example.com             hello      8080-tcp                 None
+
+[root@master ~]# oc delete route hello 
+route "hello" deleted
+
+[root@master ~]# oc get route 
+No resources found.
+
+
+18. First Create a self sign certificate for hello service.
+
+[root@master ~]# openssl genrsa -out hello.key 2048 
+
+
+[root@master ~]# openssl req -new -key hello.key -out hello.csr -subj "/C=IN/ST=Delhi/L=NewDelhi/O=Example/OU=DevOps/CN=networktestapp.apps.example.com"
+
+
+[root@master ~]# openssl x509 -req -days 366 -in hello.csr -signkey hello.key -out hello.crt 
+
+
+
+19. Create a secure edge-terminated route using the generated TLS certificate and key.
+
+
+[root@master ~]# oc create route edge --service=hello --hostname=networktestapp.apps.example.com --key=hello.key --cert=hello.crt 
+
+
+[root@master ~]# oc get route 
+NAME      HOST/PORT                         PATH      SERVICES   PORT       TERMINATION   WILDCARD
+hello     networktestapp.apps.example.com             hello      8080-tcp   edge          None
+
+[root@master ~]# oc get route/hello -o yaml
+
+
+20. Now Open Web Browser and point to the following URL: 
+
+https://networktestapp.apps.example.com
+
+
+
+##################################################################################################################################
+
+To create an application based on an Image from Docker Hub: 
+
+$ oc new-app mysql MYSQL_USER=user1 MYSQL_PASSWORD=password MYSQL_DATABASE=db1 MYSQL_ROOT_PASSWORD=supersecret -l db=mysql
+
+To Create an application based on an Image from a private registry:
+
+$ oc new-app --docker-image=myregistryserver.example.com:5000/mycompnay/myapp --name=myapp 
+
+To create an application based on source code stored in Git Repository:
+
+$ oc new-app https://github.com/sureshchandrarhca15/openshift-39 --name=hello
+
+To create an application based on source code stored in Git Hub and referencing to an Image stream: 
+
+$ oc new-app https://github.com/sureshchandrarhca15/openshift-39 -i php:7.0 --name=php-hello 
+
+
+#####################################################################################
+
+
+
+
+Deploy MySQL as Backend and Apache-php Application as frontend 
+###############################################################
+
+
+1. Let's create a Project named "project1" 
+
+
+[root@master ~]# oc new-project project1 --description='Demo Project1' --display-name='project1'
+
+[root@master ~]# oc get projects
+NAME                    DISPLAY NAME   STATUS
+default                                Active
+kube-public                            Active
+kube-system                            Active
+logging                                Active
+management-infra                       Active
+openshift                              Active
+openshift-infra                        Active
+openshift-node                         Active
+openshift-web-console                  Active
+project1                project1       Active
+
+
+
+Login to https://master.example.com:8443
+
+Username	: admin
+Password	: redhat 
+
+
+Select "project1" Project and Deploy MySQL Pod in it by following the below steps: 
+
+Click on "browse Catalog" -> Select MySQL (Ephemeral) -> Next ->  
+
+Database Service Name		:	mysql
+
+MySQL Connection Username	:	mysql
+
+MySQL Connection Password	:	mysql
+
+MySQL root user Password	:	supersecret
+
+MySQL Database Name			: 	sampledb
+
+
+Click on Create -> Close. 
+
+Now click on Project Overview and check the status. You can also check the status using CLI: 
+
+[root@master ~]# oc project project1
+
+[root@master ~]# oc get pods -o wide
+NAME            READY     STATUS    RESTARTS   AGE       IP           NODE
+mysql-1-n2j7k   1/1       Running   0          1m        10.130.0.8   node2.example.com
+[root@master ~]#
+[root@master ~]# oc get dc
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+mysql     1          1         1         config,image(mysql:5.7)
+[root@master ~]#
+[root@master ~]#
+[root@master ~]# oc get rc
+NAME      DESIRED   CURRENT   READY     AGE
+mysql-1   1         1         1         2m
+[root@master ~]#
+[root@master ~]#
+[root@master ~]# oc get svc
+NAME      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+mysql     ClusterIP   172.30.99.205   <none>        3306/TCP   2m
+
+
+Now create a table named "users" in sampledb Database 
+
+[root@master ~]# oc exec -it mysql-1-n2j7k /bin/bash
+bash-4.2$
+bash-4.2$ mysql -h172.30.99.205 -uroot -psupersecret
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sampledb           |
+| sys                |
++--------------------+
+5 rows in set (0.00 sec)
+
+mysql> create table users (user_id int not null auto_increment, username varchar(200), PRIMARY KEY(user_id));
+Query OK, 0 rows affected (0.02 sec)
+
+mysql> insert into users values (null, 'suresh');
+Query OK, 1 row affected (0.01 sec)
+
+mysql> insert into users values (null, 'sam');
+Query OK, 1 row affected (0.00 sec)
+
+mysql> select * from users;
++---------+----------+
+| user_id | username |
++---------+----------+
+|       1 | suresh   |
+|       2 | sam      |
++---------+----------+
+2 rows in set (0.00 sec)
+
+mysql> exit; 
+
+bash-4.2$ exit
+
+
+
+Now let's Deploy a frontend Application which connect to MySQL Database. 
+
+Login to https://master.example.com:8443
+
+Username:	admin
+Password: 	redhat
+
+
+Select Project1 -> Click on "Add to Project" drop down menu-> select "Browse Catalog -> Select PHP Build Image -> Next 
+
+Version				:	7.1 - latest 
+
+Application Name	:	dbtest
+
+Git Repository		:	https://github.com/sureshchandrarhca15/openshift-dbtest.git
+
+
+Click on Create -> Close 
+
+Now click on Overview in project1 and check the status. 
+
+You  can also see the status by using the below command: 
+
+[root@master ~]# oc get bc
+NAME      TYPE      FROM         LATEST
+dbtest    Source    Git@master   1
+
+[root@master ~]# oc logs -f bc/dbtest
+
+[root@master ~]# oc get dc
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+dbtest    1          1         1         config,image(dbtest:latest)
+mysql     1          1         1         config,image(mysql:5.7)
+
+
+[root@master ~]# oc get rc
+NAME       DESIRED   CURRENT   READY     AGE
+dbtest-1   1         1         1         1m
+mysql-1    1         1         1         16m
+
+
+[root@master ~]# oc get svc
+NAME      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+dbtest    ClusterIP   172.30.195.240   <none>        8080/TCP   5m
+mysql     ClusterIP   172.30.99.205    <none>        3306/TCP   16m
+
+
+[root@master ~]# oc get route
+NAME      HOST/PORT                          PATH      SERVICES   PORT       TERMINATION   WILDCARD
+dbtest    dbtest-project1.apps.example.com             dbtest     8080-tcp                 None
+
+
+Now Open the Web Browser and Point to the below URL: 
+
+http://dbtest-project1.apps.example.com
+
+http://dbtest-project1.apps.example.com/dbtest.php
