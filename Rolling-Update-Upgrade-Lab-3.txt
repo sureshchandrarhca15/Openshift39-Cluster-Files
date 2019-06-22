@@ -1,0 +1,266 @@
+Lab: Rolling Update in Openshift 
+#################################
+
+Step 1: Create a Project 
+
+[root@master ~]# oc new-project rolling-update 
+
+
+Step 2: Let's create a sample application:
+
+[root@master ~]# oc run rolling --image=openshift/hello-openshift --replicas=9
+
+[root@master ~]# oc get dc 
+
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+rolling   1          9         9         config
+
+
+[root@master ~]# oc get rc
+
+NAME        DESIRED   CURRENT   READY     AGE
+rolling-1   9         9         9         37s
+
+
+Step 3: Create a service 
+
+[root@master ~]# oc expose dc/rolling --port 8080
+
+[root@master ~]# oc get svc
+
+NAME      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+rolling   ClusterIP   172.30.187.117   <none>        8080/TCP   5s
+
+
+[root@master ~]# oc describe svc rolling 
+
+Name:              rolling
+Namespace:         rolling-update
+Labels:            run=rolling
+Annotations:       <none>
+Selector:          run=rolling
+Type:              ClusterIP
+IP:                172.30.187.117
+Port:              <unset>  8080/TCP
+TargetPort:        8080/TCP
+Endpoints:         10.129.0.24:8080,10.129.0.25:8080,10.129.0.26:8080 + 6 more...
+Session Affinity:  None
+Events:            <none>
+
+
+Step 4: Expose the Service 
+
+[root@master ~]# oc expose svc/rolling
+
+root@master ~]# oc get route 
+
+NAME      HOST/PORT                                           PATH      SERVICES   PORT      TERMINATION   WILDCARD
+rolling   rolling-rolling-update.apps.openshift.example.com             rolling    8080                    None
+
+
+
+Step 5: Get the details of Pod, SVC, Route etc. 
+
+[root@master ~]# oc get pod
+
+NAME              READY     STATUS    RESTARTS   AGE
+rolling-1-9j22t   1/1       Running   0          2m
+rolling-1-dpgsk   1/1       Running   0          2m
+rolling-1-fjm5m   1/1       Running   0          2m
+rolling-1-gr55m   1/1       Running   0          2m
+rolling-1-ks8r9   1/1       Running   0          2m
+rolling-1-lcsjg   1/1       Running   0          2m
+rolling-1-p4q5m   1/1       Running   0          2m
+rolling-1-wtdsc   1/1       Running   0          2m
+rolling-1-znr2s   1/1       Running   0          2m
+
+[root@master ~]# oc get svc 
+
+NAME      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+rolling   ClusterIP   172.30.187.117   <none>        8080/TCP   1m
+
+
+[root@master ~]# oc get route 
+
+NAME      HOST/PORT                                           PATH      SERVICES   PORT      TERMINATION   WILDCARD
+rolling   rolling-rolling-update.apps.openshift.example.com             rolling    8080                    None
+
+
+
+Step 6: Use the below command to access the application
+
+sam@ThinkPad-E450:~$ while true ; do curl http://rolling-rolling-update.apps.openshift.example.com ; sleep 1; done 
+
+You will see the below outpit: 
+
+Hello OpenShift!
+Hello OpenShift!
+Hello OpenShift!
+
+
+Step 7: Once the application is up and running, we can trigger a new deployment. 
+To do so, we will change configuration of the deployment by setting the environment variable, which should trigger a new deployment. 
+
+
+Do the below change in DC config:
+
+[root@master ~]# oc edit dc rolling 
+
+.....
+strategy:
+    activeDeadlineSeconds: 21600
+    resources: {}
+    rollingParams:
+      intervalSeconds: 20		# this line, change from 1 to 20 seconds
+      maxSurge: 25%
+      maxUnavailable: 25%
+      timeoutSeconds: 600
+      updatePeriodSeconds: 20	# this line, change from 1 to 20 seconds 
+    type: Rolling
+.......
+
+
+[root@master ~]# oc set env dc/rolling RESPONSE="Hello from new roll"
+
+
+Step 8: verify it: 
+
+[root@master ~]# oc get dc
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+rolling   2          9         9         config
+
+
+[root@master ~]# oc get pod 
+NAME              READY     STATUS    RESTARTS   AGE
+rolling-2-bgkz9   1/1       Running   0          2m
+rolling-2-jcswz   1/1       Running   0          2m
+rolling-2-jmgq5   1/1       Running   0          2m
+rolling-2-k7b8z   1/1       Running   0          2m
+rolling-2-mkt8m   1/1       Running   0          2m
+rolling-2-mlt2m   1/1       Running   0          2m
+rolling-2-tlmrx   1/1       Running   0          2m
+rolling-2-wpcn7   1/1       Running   0          2m
+rolling-2-xkn8c   1/1       Running   0          2m
+
+
+sam@ThinkPad-E450:~$ while true ; do curl http://rolling-rolling-update.apps.openshift.example.com ; sleep 1; done 
+Hello from new roll
+Hello from new roll
+Hello from new roll
+
+
+Step 9: Trigger the new deployment again 
+
+[root@master ~]# oc set env dc/rolling RESPONSE="Hello from new roll 2"
+
+
+sam@ThinkPad-E450:~$ while true ; do curl http://rolling-rolling-update.apps.openshift.example.com ; sleep 1; done 
+
+Hello from new roll
+Hello from new roll
+Hello from new roll
+Hello from new roll
+Hello from new roll
+Hello from new roll 2
+Hello from new roll
+Hello from new roll
+Hello from new roll
+Hello from new roll 2
+Hello from new roll
+Hello from new roll
+Hello from new roll 2
+Hello from new roll
+Hello from new roll
+Hello from new roll 2
+Hello from new roll 2
+Hello from new roll 2
+Hello from new roll
+Hello from new roll
+
+
+Step 10: View the Deployment history. 
+
+root@master ~]# oc get dc 
+
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+rolling   3          9         9         config
+
+
+[root@master ~]# oc rollout history dc/rolling 
+
+deploymentconfigs "rolling"
+REVISION	STATUS		CAUSE
+1		Complete	config change
+2		Complete	config change
+3		Complete	config change
+
+
+You can view details specific to a revision by using the --revision flag:
+
+[root@master ~]# oc rollout history dc/rolling --revision=2
+
+deploymentconfigs "rolling" with revision #2
+Pod Template:
+  Labels:	deployment=rolling-2
+	deploymentconfig=rolling
+	run=rolling
+  Annotations:	openshift.io/deployment-config.latest-version=2
+	openshift.io/deployment-config.name=rolling
+	openshift.io/deployment.name=rolling-2
+  Containers:
+   rolling:
+    Image:	openshift/hello-openshift
+    Port:	<none>
+    Environment:
+      RESPONSE:	Hello from new roll
+    Mounts:	<none>
+  Volumes:	<none>
+
+
+[root@master ~]# 
+[root@master ~]# oc rollout history dc/rolling --revision=3
+deploymentconfigs "rolling" with revision #3
+Pod Template:
+  Labels:	deployment=rolling-3
+	deploymentconfig=rolling
+	run=rolling
+  Annotations:	openshift.io/deployment-config.latest-version=3
+	openshift.io/deployment-config.name=rolling
+	openshift.io/deployment.name=rolling-3
+  Containers:
+   rolling:
+    Image:	openshift/hello-openshift
+    Port:	<none>
+    Environment:
+      RESPONSE:	Hello from new roll 2
+    Mounts:	<none>
+  Volumes:	<none>
+
+[root@master ~]# 
+
+
+Step 11: If the current revision of your deployment configuration failed to deploy, you can restart the deployment process with:
+
+[root@master ~]# oc rollout retry dc/rolling
+
+
+error: rollout #3 is complete; only failed deployments can be retried.
+You can start a new deployment with 'oc rollout latest dc/rolling'.
+
+
+If the latest revision of it was deployed successfully, the command will display a message and the deployment process will not be retried.
+
+
+
+Step 12: Rolling Back a Deployment
+
+To rollback to the last successful deployed revision of your configuration:
+
+[root@master ~]# oc rollout undo dc/rolling
+
+To rollback to the specific revision of your configuration:
+
+[root@master ~]# oc rollout undo dc/rolling --to-revision=1
+
+
+##############################################################################
