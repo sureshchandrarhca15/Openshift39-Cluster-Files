@@ -387,7 +387,7 @@ Password: 	Pa$$w0rd
 
 Select Project1 -> Click on "Add to Project" drop down menu-> select "Browse Catalog -> Select PHP Build Image -> Next 
 
-Version				:	7.1 - latest 
+Version				    :	7.1 - latest 
 
 Application Name	:	dbtest
 
