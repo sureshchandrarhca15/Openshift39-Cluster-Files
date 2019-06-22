@@ -9,13 +9,14 @@ Go to Openshift Dashboard and Select bluegreen Project
 
 Click on "Browse Catalog" Select "PHP" Builder Image -> Next 
 
-Version			    		:	7.1 - latest 
+Version             :	7.1 - latest 
 
-Application Name		:	blueapp
+Application Name    :	blueapp
 
-Git Repository			:	https://github.com/sureshchandrarhca15/openshift-bluegreen.git
+Git Repository      :	https://github.com/sureshchandrarhca15/openshift-bluegreen.git
 
-Expend "Advanced Options" and uncheck the box of "Create a route to the application" in Routing Section. We will create the route later. 
+Expend "Advanced Options" and uncheck the box of "Create a route to the application" in Routing Section. 
+We will create the route later. 
 
 Click on Create. 
 
@@ -56,7 +57,7 @@ bluegreen   bluegreen.apps.openshift.example.com             blueapp    8080-tcp
 Now Open Web Browser and Point to the below URL to access the Application: 
 
 
-http://bluegreen.apps.example.com
+http://bluegreen.apps.openshift.example.com
 
 
 
@@ -69,11 +70,11 @@ Go to Openshift Dashboard and Select bluegreen Project
 
 Click on "Add to Project" Dropdown Menu -> "Browse Catalog" Select "PHP" Builder Image -> Next 
 
-Version					    :	7.1 - latest 
+Version             :	7.1 - latest 
 
-Application Name		:	greenapp
+Application Name    :	greenapp
 
-Git Repository			:	https://github.com/sureshchandrarhca15/openshift-bluegreen.git
+Git Repository      :	https://github.com/sureshchandrarhca15/openshift-bluegreen.git
 
 Expend "Advanced Options" and uncheck the box of "Create a route to the application" in Routing Section. We will use the same route  which we have created previously for blueapp. 
 
@@ -116,6 +117,7 @@ Now lets change the route from blueapp to greenapp Service
 
 [root@master ~]# oc edit route bluegreen
 
+...
 spec:
   host: bluegreen.apps.openshift.example.com
   port:
@@ -125,6 +127,7 @@ spec:
     name: greenapp				# Change blueapp to greenapp Service 
     weight: 100
   wildcardPolicy: None
+...
 
 :wq (save and exit) 
 
