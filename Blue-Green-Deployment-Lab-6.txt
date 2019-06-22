@@ -9,7 +9,7 @@ Go to Openshift Dashboard and Select bluegreen Project
 
 Click on "Browse Catalog" Select "PHP" Builder Image -> Next 
 
-Version					:	7.1 - latest 
+Version			    		:	7.1 - latest 
 
 Application Name		:	blueapp
 
@@ -69,7 +69,7 @@ Go to Openshift Dashboard and Select bluegreen Project
 
 Click on "Add to Project" Dropdown Menu -> "Browse Catalog" Select "PHP" Builder Image -> Next 
 
-Version					:	7.1 - latest 
+Version					    :	7.1 - latest 
 
 Application Name		:	greenapp
 
@@ -107,7 +107,7 @@ greenapp   ClusterIP   172.30.74.6     <none>        8080/TCP            4m
 
 
 [root@master ~]# oc get route
-NAME        HOST/PORT                		    PATH      SERVICES   PORT       TERMINATION   WILDCARD
+NAME        HOST/PORT                      		    PATH      SERVICES   PORT       TERMINATION   WILDCARD
 bluegreen   bluegreen.apps.openshift.example.com             blueapp    8080-tcp                 None
 
 
@@ -117,7 +117,7 @@ Now lets change the route from blueapp to greenapp Service
 [root@master ~]# oc edit route bluegreen
 
 spec:
-  host: bluegreen.apps.example.com
+  host: bluegreen.apps.openshift.example.com
   port:
     targetPort: 8080-tcp
   to:
@@ -130,8 +130,8 @@ spec:
 
 
 [root@master ~]# oc get route
-NAME        HOST/PORT                    PATH      SERVICES   PORT       TERMINATION   WILDCARD
-bluegreen   bluegreen.apps.example.com             greenapp   8080-tcp                 None
+NAME        HOST/PORT                             PATH      SERVICES   PORT       TERMINATION   WILDCARD
+bluegreen   bluegreen.apps.openshift.example.com             greenapp   8080-tcp                 None
 
 
 
