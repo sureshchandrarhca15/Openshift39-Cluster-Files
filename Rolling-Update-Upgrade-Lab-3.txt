@@ -263,4 +263,9 @@ To rollback to the specific revision of your configuration:
 [root@master ~]# oc rollout undo dc/rolling --to-revision=1
 
 
+Step 13: Delete everything
+
+[root@master ~]# oc delete project rolling-update 
+
+
 ##############################################################################
