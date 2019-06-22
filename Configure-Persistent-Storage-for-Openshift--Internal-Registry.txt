@@ -180,7 +180,7 @@ Now Select registry storage project -> Brows Catalog -> PHP -> Next ->
 
 Version: 7.0 - latest
 Application Name: rgtest
-Git Repositories: https://github.com/sureshchandrarhca15/OpenShift39.git
+Git Repositories: https://github.com/sureshchandrarhca15/openshift-php-hello-world.git
 
 Create -> Close. 
 
