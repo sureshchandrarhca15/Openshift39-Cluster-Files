@@ -297,15 +297,15 @@ Select "project1" Project and Deploy MySQL Pod in it by following the below step
 
 Click on "browse Catalog" -> Select MySQL (Ephemeral) -> Next ->  
 
-Database Service Name		:	mysql
+Database Service Name   		:	mysql
 
-MySQL Connection Username	:	mysql
+MySQL Connection Username 	:	mysql
 
-MySQL Connection Password	:	mysql
+MySQL Connection Password	  :	mysql
 
-MySQL root user Password	:	supersecret
+MySQL root user Password	  :	supersecret
 
-MySQL Database Name			: 	sampledb
+MySQL Database Name		  	  : 	sampledb
 
 
 Click on Create -> Close. 
