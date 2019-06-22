@@ -1,0 +1,147 @@
+Lab: Blue-Green Deployment 
+##########################
+
+Create a new project:
+
+[root@master ~]# oc new-project bluegreen --description="Blue Green Deployment" --display-name="bluegreen"
+
+Go to Openshift Dashboard and Select bluegreen Project 
+
+Click on "Browse Catalog" Select "PHP" Builder Image -> Next 
+
+Version					:	7.1 - latest 
+
+Application Name		:	blueapp
+
+Git Repository			:	https://github.com/sureshchandrarhca15/openshift-bluegreen.git
+
+Expend "Advanced Options" and uncheck the box of "Create a route to the application" in Routing Section. We will create the route later. 
+
+Click on Create. 
+
+Now go to Overview to see the status. You can also use the CLI to see the status. 
+
+[root@master ~]# oc project bluegreen
+
+[root@master ~]# oc get bc
+NAME      TYPE      FROM         LATEST
+blueapp   Source    Git@master   1
+
+[root@master ~]# oc logs -f bc/blueapp
+
+[root@master ~]# oc get dc
+NAME      REVISION   DESIRED   CURRENT   TRIGGERED BY
+blueapp   1          1         1         config,image(blueapp:latest)
+
+
+[root@master ~]# oc get rc
+NAME        DESIRED   CURRENT   READY     AGE
+blueapp-1   1         1         1         42s
+
+
+[root@master ~]# oc get svc
+NAME      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
+blueapp   ClusterIP   172.30.112.74   <none>        8080/TCP,8443/TCP   7m
+
+
+Let's create a route for this application: 
+
+[root@master ~]# oc expose service blueapp --name=bluegreen --hostname=bluegreen.apps.openshift.example.com
+
+[root@master ~]# oc get route
+NAME        HOST/PORT                    PATH  			    SERVICES   PORT       TERMINATION   WILDCARD
+bluegreen   bluegreen.apps.openshift.example.com             blueapp    8080-tcp                 None
+
+
+Now Open Web Browser and Point to the below URL to access the Application: 
+
+
+http://bluegreen.apps.example.com
+
+
+
+Now let's Deploy the Green Application 
+
+First we need to change in Git Repository Code to make the green colour box. You need to modify "image.php" 
+
+
+Go to Openshift Dashboard and Select bluegreen Project 
+
+Click on "Add to Project" Dropdown Menu -> "Browse Catalog" Select "PHP" Builder Image -> Next 
+
+Version					:	7.1 - latest 
+
+Application Name		:	greenapp
+
+Git Repository			:	https://github.com/sureshchandrarhca15/openshift-bluegreen.git
+
+Expend "Advanced Options" and uncheck the box of "Create a route to the application" in Routing Section. We will use the same route  which we have created previously for blueapp. 
+
+Click on Create. 
+
+Now go to Overview to see the status. You can also use the CLI to see the status. 
+
+[root@master ~]# oc get bc
+NAME       TYPE      FROM         LATEST
+blueapp    Source    Git@master   1
+greenapp   Source    Git@master   1
+
+[root@master ~]# oc logs -f bc/greenapp
+
+
+[root@master ~]# oc get dc
+NAME       REVISION   DESIRED   CURRENT   TRIGGERED BY
+blueapp    1          1         1         config,image(blueapp:latest)
+greenapp   1          1         1         config,image(greenapp:latest)
+
+
+[root@master ~]# oc get rc
+NAME         DESIRED   CURRENT   READY     AGE
+blueapp-1    1         1         1         14m
+greenapp-1   1         1         1         1m
+
+[root@master ~]# oc get svc
+NAME       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
+blueapp    ClusterIP   172.30.112.74   <none>        8080/TCP,8443/TCP   21m
+greenapp   ClusterIP   172.30.74.6     <none>        8080/TCP            4m
+
+
+[root@master ~]# oc get route
+NAME        HOST/PORT                		    PATH      SERVICES   PORT       TERMINATION   WILDCARD
+bluegreen   bluegreen.apps.openshift.example.com             blueapp    8080-tcp                 None
+
+
+
+Now lets change the route from blueapp to greenapp Service 
+
+[root@master ~]# oc edit route bluegreen
+
+spec:
+  host: bluegreen.apps.example.com
+  port:
+    targetPort: 8080-tcp
+  to:
+    kind: Service
+    name: greenapp				# Change blueapp to greenapp Service 
+    weight: 100
+  wildcardPolicy: None
+
+:wq (save and exit) 
+
+
+[root@master ~]# oc get route
+NAME        HOST/PORT                    PATH      SERVICES   PORT       TERMINATION   WILDCARD
+bluegreen   bluegreen.apps.example.com             greenapp   8080-tcp                 None
+
+
+
+Now Refresh the Below URL: 
+
+http://bluegreen.apps.openshift.example.com/
+
+You shoud see green box. If there is some issue in Greenapp Deployment, You can rollback to Blueapp Deployment By using the same way. 
+
+
+Congratulations, you have successfully done Bluegreen Deployment in Openshift Cluster. 
+
+##########################################################################
