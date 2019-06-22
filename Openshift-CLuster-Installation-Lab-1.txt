@@ -5,18 +5,18 @@
 infra1structure Setup: 
 *********************
 
-Hostname						IP Address			CPUs	RAM		HDD							OS				Role
-master.openshift.example.com	192.168.0.50		 2		2 GB		/dev/sda (100 GB) 		CentOS7.X		Master Node
-node1.openshift.example.com		192.168.0.51		 2		2 GB		/dev/sda (100 GB) 		CentOS7.X		Worker Node 
-node2.openshift.example.com		192.168.0.52		 2		2 GB		/dev/sda (100 GB) 		CentOS7.X		Worker Node
-infra1.openshift.example.com	192.168.0.53		 2		2 GB		/dev/sda (100 GB) 		CentOS7.X		infra1 Node
+Hostname			IP Address	CPUs	RAM	HDD			OS		Role
+master.openshift.example.com	192.168.0.50	 2	2 GB	/dev/sda (100 GB) 	CentOS7.X	Master Node
+node1.openshift.example.com	192.168.0.51	 2	2 GB	/dev/sda (100 GB) 	CentOS7.X	Worker Node 
+node2.openshift.example.com	192.168.0.52	 2	2 GB	/dev/sda (100 GB) 	CentOS7.X	Worker Node
+infra1.openshift.example.com	192.168.0.53	 2	2 GB	/dev/sda (100 GB) 	CentOS7.X	infra1 Node
 
 
 
 			
-							#################################
-							# 		Preparing Nodes: 		#
-							#################################
+						#################################
+						# 	Preparing Nodes: 	#
+						#################################
 
 Step 1: Set the hostname:
 *************************
@@ -63,7 +63,7 @@ Configure /etc/hosts file for name resolution as following on all nodes:
 
 ~]# vim /etc/hosts
 
-192.168.0.50		master.openshift.example.com	master
+192.168.0.50		master.openshift.example.com		master
 192.168.0.51		node1.openshift.example.com		node1
 192.168.0.52		node2.openshift.example.com		node2
 192.168.0.53		infra1.openshift.example.com		infra1
@@ -226,7 +226,7 @@ Open /etc/origin/master/master-config.yaml file and do the following changes:
     provider:
       apiVersion: v1
       kind: HTPasswdPasswordIdentityProvider		## This line
-	  file: /etc/origin/master/htpasswd				## This line
+      file: /etc/origin/master/htpasswd			## This line
 
 	
 :wq (save and exit) 
@@ -393,9 +393,9 @@ http://demoapp1-demo.apps.openshift.example.com
 
 Now click on Pod Icon to get the details. 
 
-In my case, this pod is running on node2.openshift.example.com system, so at this point we don't have DNS to resolve App URL. 
 
-I am using /etc/hosts file to resolve it using infra1 node IP Address. because on infra1 node our router pod is running so all traffic will redirect from infra1 node in OpenShift Cluster. 
+NOTE: I don't have DNS to resolve App URL. So, I am using /etc/hosts file to resolve it using infra1 node IP Address. 
+	because on infra1 node our router pod is running so all traffic will routed from infra1 node in OpenShift Cluster. 
 
 
 ~]# vim /etc/hosts
